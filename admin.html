@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DStv Championship — Admin Setup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          pitchDark: '#020617', stadiumBlue: '#0f172a', turfGreen: '#10b981',
+          goldMedal: '#fbbf24', multiBlue: '#00ADEF', crimsonFoul: '#ef4444'
+        },
+        fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] }
+      }
+    }
+  }
+</script>
+<style>
+  body { font-family:'Plus Jakarta Sans',sans-serif; background:#020617; color:#f8fafc; }
+  .panel { background:rgba(15,23,42,0.85); border:1px solid rgba(255,255,255,0.08); }
+  .step-num { width:20px;height:20px;border-radius:50%;background:#00ADEF;color:#020617;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0; }
+  details > summary { cursor:pointer; list-style:none; }
+  details > summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="min-h-screen pb-16">
+
+  <div class="h-1.5 w-full bg-crimsonFoul"></div>
+
+  <header class="border-b border-white/10 px-4 py-4 sm:px-6 panel">
+    <div class="max-w-3xl mx-auto flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="font-black text-multiBlue text-xl tracking-widest">DStv</span>
+        <div class="h-6 w-px bg-white/20"></div>
+        <div>
+          <h1 class="text-sm font-black uppercase tracking-wide text-white">Championship — Admin Setup</h1>
+          <p class="text-[10px] text-crimsonFoul uppercase font-extrabold tracking-wider">Internal only</p>
+        </div>
+      </div>
+      <button onclick="testAll()" id="test-btn" class="px-4 py-2 text-xs font-bold rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/10 transition">🔄 Test All Sheets</button>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-8 space-y-6">
+
+    <!-- ── Step 1: Apps Script setup ───────────────────────────────────────── -->
+    <details class="panel rounded-xl border border-multiBlue/40" open>
+      <summary class="px-5 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="step-num">1</span>
+          <div>
+            <p class="text-xs font-black uppercase tracking-wide text-white">Deploy the Google Apps Script proxy</p>
+            <p class="text-[10px] text-slate-400 mt-0.5">One-time setup — fixes the CORS error that prevents direct Sheet access from a browser</p>
+          </div>
+        </div>
+        <i class="fa-solid fa-chevron-down text-slate-500 text-xs"></i>
+      </summary>
+      <div class="px-5 pb-5 space-y-3 border-t border-white/10 pt-4">
+        <p class="text-[11px] text-slate-300 leading-relaxed">
+          Browsers block direct Google Sheets requests (CORS). The fix is a tiny Google Apps Script Web App that lives inside your own workbook and serves the data without any restrictions.
+        </p>
+        <ol class="space-y-2">
+          <li class="flex gap-2 text-[11px] text-slate-300">
+            <span class="step-num mt-0.5">1</span>
+            Open your Google Sheets workbook → click <strong class="text-white">Extensions → Apps Script</strong>.
+          </li>
+          <li class="flex gap-2 text-[11px] text-slate-300">
+            <span class="step-num mt-0.5">2</span>
+            Delete all existing code. Paste the script below, then click <strong class="text-white">Save (Ctrl+S)</strong>.
+          </li>
+          <li class="flex gap-2 text-[11px] text-slate-300">
+            <span class="step-num mt-0.5">3</span>
+            Click <strong class="text-white">Deploy → New deployment</strong>. Type: <em>Web app</em>. Execute as: <em>Me</em>. Who has access: <strong class="text-white">Anyone</strong>. Click Deploy and copy the Web App URL.
+          </li>
+          <li class="flex gap-2 text-[11px] text-slate-300">
+            <span class="step-num mt-0.5">4</span>
+            Paste that URL into the "Apps Script URL" field in Step 2 below.
+          </li>
+        </ol>
+        <div class="relative mt-2">
+          <pre id="script-code" class="bg-slate-950 text-emerald-300 text-[10px] rounded-lg p-4 overflow-x-auto border border-white/10 leading-relaxed whitespace-pre">function doGet(e) {
+  var sheetName = e.parameter.sheet;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ error: 'Sheet not found: ' + sheetName }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  var data = sheet.getDataRange().getValues();
+  var output = JSON.stringify(data);
+  return ContentService
+    .createTextOutput(output)
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+          <button onclick="copyScript()" class="absolute top-2 right-2 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-[10px] font-bold rounded border border-white/10 text-slate-300">Copy</button>
+        </div>
+      </div>
+    </details>
+
+    <!-- ── Step 2: Connect ─────────────────────────────────────────────────── -->
+    <details class="panel rounded-xl border border-white/10" open>
+      <summary class="px-5 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="step-num">2</span>
+          <div>
+            <p class="text-xs font-black uppercase tracking-wide text-white">Connect your workbook</p>
+            <p class="text-[10px] text-slate-400 mt-0.5">One workbook URL + the exact name of each sheet tab</p>
+          </div>
+        </div>
+        <i class="fa-solid fa-chevron-down text-slate-500 text-xs"></i>
+      </summary>
+      <div class="px-5 pb-5 space-y-4 border-t border-white/10 pt-4">
+
+        <!-- Apps Script URL -->
+        <div class="space-y-1.5">
+          <label class="text-[10px] font-black uppercase tracking-wider text-multiBlue">Apps Script Web App URL</label>
+          <p class="text-[10px] text-slate-500">The URL you copied after deploying the script above (starts with https://script.google.com/macros/s/…)</p>
+          <div class="flex gap-2">
+            <input id="input-proxy-url" type="text" placeholder="https://script.google.com/macros/s/…/exec"
+              class="flex-1 bg-slate-950 border border-white/15 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-multiBlue font-mono">
+            <button onclick="saveProxyUrl()" class="px-4 py-2 bg-multiBlue/90 hover:bg-multiBlue text-slate-950 font-extrabold text-xs rounded-lg uppercase tracking-wide whitespace-nowrap">Save</button>
+          </div>
+          <p id="status-proxy" class="text-[10px] text-slate-500 font-semibold"></p>
+        </div>
+
+        <div class="border-t border-white/10 pt-4 space-y-3">
+          <p class="text-[10px] text-slate-400">Enter the <strong class="text-slate-200">exact sheet tab names</strong> as they appear at the bottom of your workbook. Case-sensitive.</p>
+          <div id="sheet-name-inputs" class="space-y-3"></div>
+        </div>
+
+        <div class="pt-2">
+          <button onclick="testAll()" class="w-full py-2.5 bg-turfGreen/90 hover:bg-turfGreen text-slate-950 font-black text-xs rounded-lg uppercase tracking-wide">
+            ✅ Test All Sheet Connections
+          </button>
+        </div>
+      </div>
+    </details>
+
+    <!-- ── Step 3: National gate ───────────────────────────────────────────── -->
+    <div class="panel rounded-xl p-5 border border-white/10">
+      <div class="flex items-center gap-3 mb-1">
+        <span class="step-num">3</span>
+        <h3 class="text-xs font-black uppercase tracking-wide text-white">National Target Gate</h3>
+      </div>
+      <p class="text-[11px] text-slate-400 mb-3 pl-7">Toggle on once the national 100% target has been confirmed. Controls Regional Grand Prize eligibility.</p>
+      <div class="flex items-center gap-3 pl-7">
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="goal-met-toggle" onchange="onGoalMetChange()" class="sr-only peer">
+          <div class="w-10 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-turfGreen"></div>
+        </label>
+        <span class="text-xs font-bold text-slate-300">National 100% target met</span>
+      </div>
+    </div>
+
+    <!-- ── Step 4: Generate link ───────────────────────────────────────────── -->
+    <div class="panel rounded-xl p-5 border border-goldMedal/30">
+      <div class="flex items-center gap-3 mb-1">
+        <span class="step-num">4</span>
+        <h3 class="text-xs font-black uppercase tracking-wide text-goldMedal">Generate Dashboard Link</h3>
+      </div>
+      <p class="text-[11px] text-slate-400 mb-3 pl-7">Builds a permanent URL with config encoded in the <strong class="text-slate-200">#hash</strong> — survives page refresh and bookmarking on GitHub Pages.</p>
+      <div class="pl-7">
+        <button onclick="generateLink()" class="px-5 py-2 bg-gradient-to-r from-goldMedal to-yellow-500 text-slate-950 font-black text-xs rounded-lg uppercase tracking-wider shadow-md">Generate Dashboard Link</button>
+        <div id="generated-link-box" class="hidden mt-3 flex gap-2">
+          <input id="generated-link-input" readonly class="flex-1 bg-slate-950 border border-white/15 rounded-lg px-3 py-2 text-[10px] text-slate-300 font-mono">
+          <button onclick="copyLink()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg border border-white/10 whitespace-nowrap">Copy</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <div id="toast-container" class="fixed bottom-5 right-5 space-y-2 z-50"></div>
+
+<script>
+// ─── Config ───────────────────────────────────────────────────────────────────
+const SECTIONS = [
+  { level: 'tl',      label: 'Team Leaders',              param: 'tl',      sheetNameKey: 'dstv_sheet_name_tl'      },
+  { level: 'tsm',     label: 'Territory Sales Managers',  param: 'tsm',     sheetNameKey: 'dstv_sheet_name_tsm'     },
+  { level: 'region',  label: 'Regions',                   param: 'region',  sheetNameKey: 'dstv_sheet_name_region'  },
+  { level: 'country', label: 'National Sales',            param: 'country', sheetNameKey: 'dstv_sheet_name_country' },
+];
+const PROXY_KEY   = 'dstv_proxy_url';
+const GOALMET_KEY = 'dstv_country_goal_met';
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+function boot() {
+  // Sheet name inputs
+  const container = document.getElementById('sheet-name-inputs');
+  container.innerHTML = SECTIONS.map(s => `
+    <div class="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+      <label class="text-[10px] font-black uppercase text-slate-400 w-44 shrink-0">${s.label}</label>
+      <input id="sname-${s.level}" type="text" placeholder='e.g. "TL Leader Board"'
+        class="flex-1 bg-slate-950 border border-white/15 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-multiBlue">
+      <span id="sname-status-${s.level}" class="text-[10px] font-semibold text-slate-500 w-32 shrink-0"></span>
+    </div>
+  `).join('');
+
+  // Restore saved values
+  const proxy = localStorage.getItem(PROXY_KEY) || '';
+  if (proxy) {
+    document.getElementById('input-proxy-url').value = proxy;
+    document.getElementById('status-proxy').textContent = 'Saved.';
+    document.getElementById('status-proxy').className = 'text-[10px] text-turfGreen font-semibold';
+  }
+  SECTIONS.forEach(s => {
+    const saved = localStorage.getItem(s.sheetNameKey) || '';
+    if (saved) document.getElementById('sname-' + s.level).value = saved;
+  });
+
+  document.getElementById('goal-met-toggle').checked = localStorage.getItem(GOALMET_KEY) !== 'false';
+}
+
+// ─── Save proxy URL ───────────────────────────────────────────────────────────
+function saveProxyUrl() {
+  const url = document.getElementById('input-proxy-url').value.trim();
+  if (!url) { showToast('Paste the Apps Script Web App URL first.', 'warning'); return; }
+  if (!url.includes('script.google.com')) {
+    showToast('That doesn\'t look like an Apps Script URL.', 'warning'); return;
+  }
+  localStorage.setItem(PROXY_KEY, url);
+  document.getElementById('status-proxy').textContent = 'Saved ✓';
+  document.getElementById('status-proxy').className = 'text-[10px] text-turfGreen font-semibold';
+  showToast('Apps Script URL saved.', 'success');
+}
+
+// ─── Test a single sheet via the proxy ───────────────────────────────────────
+async function testSheet(level) {
+  const section = SECTIONS.find(s => s.level === level);
+  const proxyUrl = localStorage.getItem(PROXY_KEY) || document.getElementById('input-proxy-url').value.trim();
+  const sheetName = document.getElementById('sname-' + level).value.trim();
+  const statusEl = document.getElementById('sname-status-' + level);
+
+  if (!proxyUrl) { statusEl.textContent = 'Set proxy URL first'; statusEl.className = 'text-[10px] font-semibold text-crimsonFoul w-32 shrink-0'; return; }
+  if (!sheetName) { statusEl.textContent = 'Enter sheet name'; statusEl.className = 'text-[10px] font-semibold text-yellow-400 w-32 shrink-0'; return; }
+
+  statusEl.textContent = 'Testing…';
+  statusEl.className = 'text-[10px] font-semibold text-slate-400 w-32 shrink-0';
+
+  // Save the name first
+  localStorage.setItem(section.sheetNameKey, sheetName);
+
+  const url = proxyUrl + '?sheet=' + encodeURIComponent(sheetName);
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    const rowCount = Math.max(0, json.length - 1);
+    statusEl.textContent = `✅ ${rowCount} rows`;
+    statusEl.className = 'text-[10px] font-semibold text-turfGreen w-32 shrink-0';
+    showToast(`✅ "${sheetName}" — ${rowCount} rows found.`, 'success');
+  } catch (e) {
+    statusEl.textContent = '❌ Failed';
+    statusEl.className = 'text-[10px] font-semibold text-crimsonFoul w-32 shrink-0';
+    showToast(`⚠️ "${sheetName}" error: ${e.message}`, 'warning');
+  }
+}
+
+async function testAll() {
+  const proxyUrl = document.getElementById('input-proxy-url').value.trim();
+  if (proxyUrl) { localStorage.setItem(PROXY_KEY, proxyUrl); }
+  for (const s of SECTIONS) await testSheet(s.level);
+}
+
+// ─── National gate ────────────────────────────────────────────────────────────
+function onGoalMetChange() {
+  const checked = document.getElementById('goal-met-toggle').checked;
+  localStorage.setItem(GOALMET_KEY, checked ? 'true' : 'false');
+  showToast(checked ? '✅ National target gate: MET.' : '⚠️ National target gate: NOT met.', checked ? 'success' : 'warning');
+}
+
+// ─── Generate link ────────────────────────────────────────────────────────────
+function generateLink() {
+  const proxyUrl = localStorage.getItem(PROXY_KEY);
+  if (!proxyUrl) { showToast('Save the Apps Script URL first (Step 2).', 'warning'); return; }
+
+  // Encode everything into the URL HASH (#) so the link survives:
+  //   • F5 / Ctrl+R refresh on GitHub Pages
+  //   • Bookmarking
+  //   • Sharing as a plain link (no server round-trip strips the hash)
+  const base   = new URL('dashboard.html', window.location.href);
+  base.search  = '';   // clear any stale query params
+  const params = new URLSearchParams();
+  params.set('proxy', proxyUrl);
+  SECTIONS.forEach(s => {
+    const name = localStorage.getItem(s.sheetNameKey) || document.getElementById('sname-' + s.level).value.trim();
+    if (name) params.set(s.param, name);
+  });
+  params.set('goalmet', localStorage.getItem(GOALMET_KEY) !== 'false' ? 'true' : 'false');
+  base.hash = params.toString();   // ← this is the fix: #proxy=…&tl=…&…
+
+  document.getElementById('generated-link-input').value = base.toString();
+  document.getElementById('generated-link-box').classList.remove('hidden');
+}
+
+function copyLink() {
+  const input = document.getElementById('generated-link-input');
+  input.select();
+  navigator.clipboard?.writeText(input.value);
+  showToast('🔗 Link copied.', 'success');
+}
+
+function copyScript() {
+  const code = document.getElementById('script-code').textContent;
+  navigator.clipboard?.writeText(code);
+  showToast('📋 Script copied to clipboard.', 'success');
+}
+
+// ─── Toasts ───────────────────────────────────────────────────────────────────
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  let bg = 'bg-slate-900 border-multiBlue text-blue-200';
+  if (type === 'success') bg = 'bg-slate-900 border-turfGreen text-emerald-300';
+  if (type === 'warning') bg = 'bg-slate-900 border-crimsonFoul text-red-300';
+  toast.className = `p-3 rounded-lg border-l-4 ${bg} shadow-2xl text-xs max-w-sm flex gap-3 items-center transform translate-y-2 opacity-0 transition-all duration-300`;
+  toast.innerHTML = `<span class="flex-1 font-semibold">${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 50);
+  setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-2'); setTimeout(() => toast.remove(), 300); }, 3500);
+}
+
+boot();
+</script>
+</body>
+</html>
